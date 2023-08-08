@@ -18,7 +18,6 @@ namespace EmployeeService
         public async Task<EmployeeEntity> GetEmployeeById(int id)
         {
             var emloyee = new EmployeeEntity();
-            var emloyeesList = new List<EmployeeEntity>();
 
             using (var connection = new SqlConnection("Data Source=(local);Initial Catalog=Test;User ID=sa;Password=Rootpassword1; "))
             {
@@ -49,14 +48,14 @@ namespace EmployeeService
                             ManagerID = reader.SafeGetInt(reader.GetOrdinal(nameof(EmployeeEntity.ManagerID))),
                             Enable = reader.SafeGetBool(reader.GetOrdinal(nameof(EmployeeEntity.Enable))),
                         };
-                        emloyeesList.Add(employee);
+						emloyee.Employees.Add(employee);
                     }
                 }
 
 			}
-            foreach (var employeer in emloyeesList)
+            foreach (var employeer in emloyee.Employees)
             {
-                emloyee.Employees.Add(await GetEmployeeById(employeer.ID));
+              await GetEmployeeByManagerID(employeer);
             }
 
 			return emloyee;
@@ -79,7 +78,34 @@ namespace EmployeeService
 			}
         }
 
-    }
+        private async Task GetEmployeeByManagerID(EmployeeEntity manager)
+        {
+            using (var connection = new SqlConnection("Data Source=(local);Initial Catalog=Test;User ID=sa;Password=Rootpassword1; "))
+            {
+				connection.Open();
+				var getAllEmloyeesCommand = new SqlCommand($"SELECT * FROM Employee WHERE ManagerID = {manager.ID} AND ID <> {manager.ID}", connection);
+
+				using (var reader = await getAllEmloyeesCommand.ExecuteReaderAsync())
+				{
+					while (await reader.ReadAsync())
+					{
+						var employee = new EmployeeEntity()
+						{
+							ID = reader.SafeGetInt(reader.GetOrdinal(nameof(EmployeeEntity.ID))),
+							Name = reader.SafeGetString(reader.GetOrdinal(nameof(EmployeeEntity.Name))),
+							ManagerID = reader.SafeGetInt(reader.GetOrdinal(nameof(EmployeeEntity.ManagerID))),
+							Enable = reader.SafeGetBool(reader.GetOrdinal(nameof(EmployeeEntity.Enable))),
+						};
+						manager.Employees.Add(employee);
+					}
+				}
+			}
+            foreach (var emloyee in manager.Employees)
+            {
+               await GetEmployeeByManagerID(emloyee);
+            }
+        }
+	}
 
       
 }
